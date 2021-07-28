@@ -1,4 +1,4 @@
-# CloudFront Dynamic Package Distribution for IoT Workloads
+# Amazon CloudFront Dynamic Package Distribution for IoT Workloads
 
 ## Background
 
@@ -38,8 +38,8 @@ Below is a sequence diagram and overview diagram for this demo.
 - Amazon S3
 
 ### Open Source Libraries Used
-- Troposphere
-- Flask
+- [Troposphere](https://github.com/cloudtools/troposphere)
+- [Flask](https://palletsprojects.com/p/flask/)
 
 
 ### Difficulty Level
@@ -68,20 +68,20 @@ The real world metrics on number of cache hits will vary based on request patter
 Lambda@Edge request cost estimates are for metadata-only responses
 
 ##### Non-cached Request:
-Lambda@Edge Request: $0.0000006
-Lambda@Edge Duration: $0.0000625125 (256MB memory Lambda for 5 sec/request)
-Dynamo (on-demand) Read Request: $0.00000025
-S3 Get/Transfer: N/A
-CloudFront Transfer: Nominal due to JSON only response
-CloudFront HTTPS Request: $0.000001
+- Lambda@Edge Request: $0.0000006
+- Lambda@Edge Duration: $0.0000625125 (256MB memory Lambda for 5 sec/request)
+- Dynamo (on-demand) Read Request: $0.00000025
+- S3 Get/Transfer: N/A
+- CloudFront Transfer: Nominal due to JSON only response
+- CloudFront HTTPS Request: $0.000001
 
-Total non-cached request cost: $0.0000643625
+    Total non-cached request cost: $0.0000643625
 
 ##### Cached Request:
-CloudFront Transfer Cost: Nominal due to JSON only response
-CloudFront HTTPS Request Cost: $0.000001
+- CloudFront Transfer Cost: Nominal due to JSON only response
+- CloudFront HTTPS Request Cost: $0.000001
 
-Total cached request cost: $0.000001
+    Total cached request cost: $0.000001
 
 #### AppRunner-backed Application Cost
 
@@ -90,19 +90,19 @@ Total cached request cost: $0.000001
 - App Runner request cost estimates are for full package responses
 
 ##### Non-cached Request:
-Dynamo (on-demand) Read Request: $0.00000025
-S3 GET Request: $0.0000004
-S3 Transfer: Free to CloudFront
-CloudFront Transfer: $0.00085
-CloudFront HTTPS Request: $0.000001
+- Dynamo (on-demand) Read Request: $0.00000025
+- S3 GET Request: $0.0000004
+- S3 Transfer: Free to CloudFront
+- CloudFront Transfer: $0.00085
+- CloudFront HTTPS Request: $0.000001
 
-Total non-cached request cost: $0.00085165
+    Total non-cached request cost: $0.00085165
 
 ##### Cached Request:
-CloudFront Transfer Cost: $0.00085
-CloudFront HTTPS Request Cost: $0.000001
+- CloudFront Transfer Cost: $0.00085
+- CloudFront HTTPS Request Cost: $0.000001
 
-Total cached request cost: $0.00085165
+    Total cached request cost: $0.00085165
 
 ## Set Up
 
@@ -110,7 +110,7 @@ Total cached request cost: $0.00085165
 
 The repo consists of two primary directories. 
 - A runtime directory that contains the main application in app.py alongside dependency/build files for either pip, pipenv, or Docker.
-- An infrastructure directory that contains the CloudFormation template in standard JSON form, as well as the ![Troposphere](https://github.com/cloudtools/troposphere) file that was used to compile it.
+- An infrastructure directory that contains the CloudFormation template in standard JSON form, as well as the Troposphere file that was used to compile it.
 
 The app.py module can be deployed as is in either a Docker container or Lambda function. This is configurable during the CloudFormation deployment. However, if you choose to use Lambda, you will be limited to the application only being able to return a metadata file with the required updates and URLs rather than the full tar package with binaries. Therefore the recommended and simplest deployment method is with AppRunner.
 
@@ -126,14 +126,14 @@ python init.py <cloudformation stack name> --create
 #### Option 2: Create CloudFormation stack in the console
 
 ##### Create CloudFormation Stack
-Regardless of whether you choose an App Runner deployment or a Lambda deployment, all you need to do to deploy the sample is to use the included CloudFormation template to create a CloudFormation stack. ![This](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-console-create-stack.html) getting started guide on creating a CloudFormation stack can help you get started. By default, you do not need to change any of the default parameters.
+Regardless of whether you choose an App Runner deployment or a Lambda deployment, all you need to do to deploy the sample is to use the included CloudFormation template to create a CloudFormation stack. [This](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-console-create-stack.html) getting started guide on creating a CloudFormation stack can help you get started. By default, you do not need to change any of the default parameters.
 
 The CloudFormation parameters are:
 
-"ComputeType": "apprunner" (default) or "edgelambda"
-"VPCCIDRPrefix": "172.31" (default)
-"ProjectSource": < this repo > (default)
-"SourceConnectionArn": "Public" (default) (Only change if you want to use a private repo)
+- "ComputeType": "apprunner" (default) or "edgelambda"
+- "VPCCIDRPrefix": "172.31" (default)
+- "ProjectSource": < this repo > (default)
+- "SourceConnectionArn": "Public" (default) (Only change if you want to use a private repo)
 
 ##### Populate Sample Data
 Once that's deployed, you'll need to populate the S3 bucket and Dynamo table with some data for your demo. Run the init script in the target account to populate those data stores. Include the CloudFormation stack name you launched as a positional argument.

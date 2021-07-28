@@ -1,0 +1,470 @@
+{
+    "Conditions": {
+        "PublicGit": {
+            "Fn::Equals": [
+                {
+                    "Ref": "SourceConnectionArn"
+                },
+                "Public"
+            ]
+        },
+        "UseAppRunner": {
+            "Fn::Equals": [
+                {
+                    "Ref": "ComputeType"
+                },
+                "AppRunner"
+            ]
+        },
+        "UseEdgeLambda": {
+            "Fn::Equals": [
+                {
+                    "Ref": "ComputeType"
+                },
+                "EdgeLambda"
+            ]
+        }
+    },
+    "Description": "CloudFormation template to create a demo of CloudFront OTA",
+    "Mappings": {
+        "RoleTrustPolicyMap": {
+            "AppRunner": {
+                "roleTrust": [
+                    "tasks.apprunner.amazonaws.com"
+                ]
+            },
+            "EdgeLambda": {
+                "roleTrust": [
+                    "edgelambda.amazonaws.com",
+                    "lambda.amazonaws.com"
+                ]
+            }
+        }
+    },
+    "Outputs": {
+        "DistributionId": {
+            "Value": {
+                "Ref": "OTADistribution"
+            }
+        },
+        "DistributionName": {
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        "https://",
+                        {
+                            "Fn::GetAtt": [
+                                "OTADistribution",
+                                "DomainName"
+                            ]
+                        }
+                    ]
+                ]
+            }
+        }
+    },
+    "Parameters": {
+        "ComputeType": {
+            "AllowedValues": [
+                "EdgeLambda",
+                "AppRunner"
+            ],
+            "Default": "AppRunner",
+            "Description": "Compute type to be used for the application layer. This can be either Lambda@Edge or AppRunner (container)",
+            "Type": "String"
+        },
+        "ProjectSource": {
+            "Description": "Demo Project Source. Don't change unless you're using a clone/fork of the original project repo",
+            "Type": "String"
+        },
+        "SourceConnectionArn": {
+            "Default": "Public",
+            "Description": "Optional GitHub connection ARN to authenticate to private repos. Not required for public repos or default",
+            "Type": "String"
+        },
+        "VPCCIDRPrefix": {
+            "Default": "172.31",
+            "Description": "IP Address range for the VPN connected VPC",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "AppBinaries": {
+            "Type": "AWS::S3::Bucket"
+        },
+        "AppEdgeLambda": {
+            "Condition": "UseEdgeLambda",
+            "Properties": {
+                "Code": {
+                    "S3Bucket": "aws-iot-samples-artifacts",
+                    "S3Key": "cf-iot-ota-app.zip"
+                },
+                "Handler": "app.edgelambda_handler",
+                "MemorySize": 256,
+                "Role": {
+                    "Fn::GetAtt": [
+                        "AppExecutionRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "python3.8",
+                "Timeout": 30
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "AppExecutionRole": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": {
+                                    "Fn::FindInMap": [
+                                        "RoleTrustPolicyMap",
+                                        {
+                                            "Ref": "ComputeType"
+                                        },
+                                        "roleTrust"
+                                    ]
+                                }
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "logs:*"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": "arn:aws:logs:*:*:*"
+                                }
+                            ],
+                            "Version": "2012-10-17"
+                        },
+                        "PolicyName": "logs"
+                    },
+                    {
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "s3:GetObject"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": [
+                                        {
+                                            "Fn::Sub": "${AppBinaries.Arn}/*"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "Version": "2012-10-17"
+                        },
+                        "PolicyName": "s3"
+                    },
+                    {
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "dynamodb:PartiQLSelect"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": [
+                                        {
+                                            "Fn::Sub": "${AppVersionsTable.Arn}"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "Version": "2012-10-17"
+                        },
+                        "PolicyName": "dynamo"
+                    },
+                    {
+                        "Fn::If": [
+                            "UseEdgeLambda",
+                            {
+                                "PolicyDocument": {
+                                    "Statement": [
+                                        {
+                                            "Action": [
+                                                "ssm:GetParameter"
+                                            ],
+                                            "Effect": "Allow",
+                                            "Resource": [
+                                                {
+                                                    "Fn::Sub": "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/cf-ota-lambda/*"
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    "Version": "2012-10-17"
+                                },
+                                "PolicyName": "ssm"
+                            },
+                            {
+                                "Ref": "AWS::NoValue"
+                            }
+                        ]
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Role"
+        },
+        "AppLambdaVersion": {
+            "Condition": "UseEdgeLambda",
+            "Properties": {
+                "FunctionName": {
+                    "Ref": "AppEdgeLambda"
+                }
+            },
+            "Type": "AWS::Lambda::Version"
+        },
+        "AppService": {
+            "Condition": "UseAppRunner",
+            "Properties": {
+                "InstanceConfiguration": {
+                    "InstanceRoleArn": {
+                        "Fn::GetAtt": [
+                            "AppExecutionRole",
+                            "Arn"
+                        ]
+                    }
+                },
+                "ServiceName": "CF-IoT-OTA",
+                "SourceConfiguration": {
+                    "AuthenticationConfiguration": {
+                        "Fn::If": [
+                            "PublicGit",
+                            {
+                                "Ref": "AWS::NoValue"
+                            },
+                            {
+                                "ConnectionArn": {
+                                    "Ref": "SourceConnectionArn"
+                                }
+                            }
+                        ]
+                    },
+                    "AutoDeploymentsEnabled": true,
+                    "CodeRepository": {
+                        "CodeConfiguration": {
+                            "CodeConfigurationValues": {
+                                "BuildCommand": "pip install -r runtime/requirements.txt",
+                                "Port": "5000",
+                                "Runtime": "PYTHON_3",
+                                "RuntimeEnvironmentVariables": [
+                                    {
+                                        "Name": "APP_LOOKUP_TABLE",
+                                        "Value": {
+                                            "Ref": "AppVersionsTable"
+                                        }
+                                    },
+                                    {
+                                        "Name": "APP_BINARIES_BUCKET",
+                                        "Value": {
+                                            "Ref": "AppBinaries"
+                                        }
+                                    }
+                                ],
+                                "StartCommand": "python runtime/app.py"
+                            },
+                            "ConfigurationSource": "API"
+                        },
+                        "RepositoryUrl": {
+                            "Ref": "ProjectSource"
+                        },
+                        "SourceCodeVersion": {
+                            "Type": "BRANCH",
+                            "Value": "main"
+                        }
+                    }
+                }
+            },
+            "Type": "AWS::AppRunner::Service"
+        },
+        "AppVersionsTable": {
+            "Properties": {
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "app",
+                        "AttributeType": "S"
+                    },
+                    {
+                        "AttributeName": "env",
+                        "AttributeType": "S"
+                    }
+                ],
+                "BillingMode": "PAY_PER_REQUEST",
+                "KeySchema": [
+                    {
+                        "AttributeName": "app",
+                        "KeyType": "HASH"
+                    },
+                    {
+                        "AttributeName": "env",
+                        "KeyType": "RANGE"
+                    }
+                ]
+            },
+            "Type": "AWS::DynamoDB::Table"
+        },
+        "DynamoTableNameSSMParam": {
+            "Condition": "UseEdgeLambda",
+            "Properties": {
+                "Name": "/cf-ota-lambda/APP_LOOKUP_TABLE",
+                "Type": "String",
+                "Value": {
+                    "Ref": "AppVersionsTable"
+                }
+            },
+            "Type": "AWS::SSM::Parameter"
+        },
+        "IoTOTACachePolicy": {
+            "Properties": {
+                "CachePolicyConfig": {
+                    "DefaultTTL": 30,
+                    "MaxTTL": 100,
+                    "MinTTL": 1,
+                    "Name": "IoTOTACachePolicy",
+                    "ParametersInCacheKeyAndForwardedToOrigin": {
+                        "CookiesConfig": {
+                            "CookieBehavior": "none"
+                        },
+                        "EnableAcceptEncodingGzip": true,
+                        "HeadersConfig": {
+                            "HeaderBehavior": "whitelist",
+                            "Headers": [
+                                "If-None-Match"
+                            ]
+                        },
+                        "QueryStringsConfig": {
+                            "QueryStringBehavior": "all"
+                        }
+                    }
+                }
+            },
+            "Type": "AWS::CloudFront::CachePolicy"
+        },
+        "IoTOTAOrigin": {
+            "Properties": {
+                "OriginRequestPolicyConfig": {
+                    "CookiesConfig": {
+                        "CookieBehavior": "none"
+                    },
+                    "HeadersConfig": {
+                        "HeaderBehavior": "whitelist",
+                        "Headers": [
+                            "If-None-Match"
+                        ]
+                    },
+                    "Name": "IoTOTAOrigin",
+                    "QueryStringsConfig": {
+                        "QueryStringBehavior": "all"
+                    }
+                }
+            },
+            "Type": "AWS::CloudFront::OriginRequestPolicy"
+        },
+        "OTADistribution": {
+            "Properties": {
+                "DistributionConfig": {
+                    "DefaultCacheBehavior": {
+                        "AllowedMethods": [
+                            "HEAD",
+                            "GET"
+                        ],
+                        "CachePolicyId": {
+                            "Ref": "IoTOTACachePolicy"
+                        },
+                        "CachedMethods": [
+                            "HEAD",
+                            "GET"
+                        ],
+                        "LambdaFunctionAssociations": {
+                            "Fn::If": [
+                                "UseEdgeLambda",
+                                [
+                                    {
+                                        "EventType": "origin-request",
+                                        "LambdaFunctionARN": {
+                                            "Ref": "AppLambdaVersion"
+                                        }
+                                    }
+                                ],
+                                {
+                                    "Ref": "AWS::NoValue"
+                                }
+                            ]
+                        },
+                        "OriginRequestPolicyId": {
+                            "Ref": "IoTOTAOrigin"
+                        },
+                        "TargetOriginId": "1",
+                        "ViewerProtocolPolicy": "allow-all"
+                    },
+                    "Enabled": true,
+                    "HttpVersion": "http2",
+                    "Origins": [
+                        {
+                            "Fn::If": [
+                                "UseEdgeLambda",
+                                {
+                                    "CustomOriginConfig": {
+                                        "OriginProtocolPolicy": "https-only"
+                                    },
+                                    "DomainName": "amazon.com",
+                                    "Id": "1"
+                                },
+                                {
+                                    "Ref": "AWS::NoValue"
+                                }
+                            ]
+                        },
+                        {
+                            "Fn::If": [
+                                "UseAppRunner",
+                                {
+                                    "CustomOriginConfig": {
+                                        "OriginProtocolPolicy": "https-only"
+                                    },
+                                    "DomainName": {
+                                        "Fn::Sub": "${AppService.ServiceUrl}"
+                                    },
+                                    "Id": "1"
+                                },
+                                {
+                                    "Ref": "AWS::NoValue"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Type": "AWS::CloudFront::Distribution"
+        },
+        "S3BucketNameSSMParam": {
+            "Condition": "UseEdgeLambda",
+            "Properties": {
+                "Name": "/cf-ota-lambda/APP_BINARIES_BUCKET",
+                "Type": "String",
+                "Value": {
+                    "Ref": "AppBinaries"
+                }
+            },
+            "Type": "AWS::SSM::Parameter"
+        }
+    }
+}

@@ -116,8 +116,13 @@ The app.py module can be deployed as is in either a Docker container or Lambda f
 
 ### Infrastructure and API deployment
 
+#### Prerequisite for App Runner deployment
+
+If you want to use App Runner for your deployment, you'll need to have a GitHub connection set up. [Follow these instructions](https://docs.aws.amazon.com/apprunner/latest/dg/manage-connections.html) to create a GitHub connection for App Runner. 
+
+
 #### Option 1: Auto-Deploy with all defaults
-If you just want to deploy the CloudFormation template as-is with all the default parameters and sample data, just run the init script as shown below specifying whatever CloudFormation stack name you want to use as a positional argument.
+If you just want to deploy the CloudFormation template as-is with all the default parameters and sample data, just run the init script as shown below specifying whatever CloudFormation stack name you want to use as a positional argument. This will create a Lambda@Edge-backed stack.
 
 ```bash
 python init.py <cloudformation stack name> --create
@@ -130,13 +135,13 @@ Regardless of whether you choose an App Runner deployment or a Lambda deployment
 
 The CloudFormation parameters are:
 
-- "ComputeType": "apprunner" (default) or "edgelambda"
+- "ComputeType": "edgelambda" (default) or "apprunner"
 - "VPCCIDRPrefix": "172.31" (default)
-- "ProjectSource": < this repo > (default)
-- "SourceConnectionArn": "Public" (default) (Only change if you want to use a private repo)
+- "ProjectSource": https://github.com/aws-samples/amazon-cloudfront-dynamic-ota (default)
+- "SourceConnectionArn": "None" (default) (If you want to use App Runner, replace with ConnectionArn from preqrequisite above)
 
 ##### Populate Sample Data
-Once that's deployed, you'll need to populate the S3 bucket and Dynamo table with some data for your demo. Run the init script in the target account to populate those data stores. Include the CloudFormation stack name you launched as a positional argument.
+Once the stack is deployed, you'll need to populate the S3 bucket and Dynamo table with some data for your demo. Run the init script in the target account to populate those data stores. Include the CloudFormation stack name you launched as a positional argument.
 
 ```bash
 python init.py <cloudformation stack name>

@@ -75,6 +75,7 @@
             "Type": "String"
         },
         "ProjectSource": {
+            "Default": "https://github.com/aws-samples/amazon-cloudfront-dynamic-ota",
             "Description": "Demo Project Source. Don't change unless you're using a clone/fork of the original project repo",
             "Type": "String"
         },

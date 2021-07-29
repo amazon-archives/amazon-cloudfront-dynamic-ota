@@ -8,9 +8,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument('cfn_stack_name')
 parser.add_argument('--create', action='store_true')
 parser.add_argument('--profile', default=None)
-parser.add_argument('--compute', default='AppRunner')
-parser.add_argument('--source', default='<Replace with aws-samples repo')
-parser.add_argument('--sourceauth', default='Public')
+parser.add_argument('--compute', default='EdgeLambda')
+parser.add_argument('--source', default='https://github.com/aws-samples/amazon-cloudfront-dynamic-ota')
+parser.add_argument('--sourceauth', default='None')
 args = parser.parse_args()
 
 if args.profile:

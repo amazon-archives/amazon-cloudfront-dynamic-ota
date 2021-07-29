@@ -67,7 +67,7 @@ compute_type_param = t.add_parameter(
         Description="Compute type to be used for the application layer. This can be either Lambda@Edge or AppRunner (container)",
         Type="String",
         AllowedValues=["EdgeLambda", "AppRunner"],
-        Default="AppRunner"
+        Default="EdgeLambda"
     )
 )
 
@@ -88,8 +88,8 @@ project_source_param = t.add_parameter(Parameter(
 source_connection_arn = t.add_parameter(Parameter(
     "SourceConnectionArn",
     Type="String",
-    Description="Optional GitHub connection ARN to authenticate to private repos. Not required for public repos or default",
-    Default="Public"
+    Description="GitHub connection ARN to authenticate to private repos for App Runner deployments",
+    Default="None"
 ))
 
 # Conditions
@@ -108,13 +108,6 @@ t.add_condition(
     Equals(
         Ref(compute_type_param),
         "AppRunner"
-        ))
-
-t.add_condition(
-    "PublicGit",
-    Equals(
-        Ref(source_connection_arn),
-        "Public"
         ))
 
 # Mappings
@@ -278,9 +271,9 @@ app_lambda_version = t.add_resource(
     ),
 )
 source_configuration = SourceConfiguration(
-            AuthenticationConfiguration=If("PublicGit", no_value, AuthenticationConfiguration(
+            AuthenticationConfiguration=AuthenticationConfiguration(
                 ConnectionArn=Ref(source_connection_arn)
-            )),
+                ),
             AutoDeploymentsEnabled=True,
             CodeRepository=CodeRepository(
                 RepositoryUrl=Ref(project_source_param),

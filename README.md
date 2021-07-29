@@ -138,7 +138,7 @@ The CloudFormation parameters are:
 - "ComputeType": "edgelambda" (default) or "apprunner"
 - "VPCCIDRPrefix": "172.31" (default)
 - "ProjectSource": https://github.com/aws-samples/amazon-cloudfront-dynamic-ota (default)
-- "SourceConnectionArn": "None" (default) (If you want to use App Runner, replace with ConnectionArn from preqrequisite above)
+- "SourceConnectionArn": "None" (default) (If you want to use App Runner, replace with ConnectionArn from [preqrequisite](https://github.com/aws-samples/amazon-cloudfront-dynamic-ota#prerequisite-for-app-runner-deployment)
 
 ##### Populate Sample Data
 Once the stack is deployed, you'll need to populate the S3 bucket and Dynamo table with some data for your demo. Run the init script in the target account to populate those data stores. Include the CloudFormation stack name you launched as a positional argument.

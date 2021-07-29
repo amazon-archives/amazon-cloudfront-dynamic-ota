@@ -1,13 +1,5 @@
 {
     "Conditions": {
-        "PublicGit": {
-            "Fn::Equals": [
-                {
-                    "Ref": "SourceConnectionArn"
-                },
-                "Public"
-            ]
-        },
         "UseAppRunner": {
             "Fn::Equals": [
                 {
@@ -70,7 +62,7 @@
                 "EdgeLambda",
                 "AppRunner"
             ],
-            "Default": "AppRunner",
+            "Default": "EdgeLambda",
             "Description": "Compute type to be used for the application layer. This can be either Lambda@Edge or AppRunner (container)",
             "Type": "String"
         },
@@ -80,8 +72,8 @@
             "Type": "String"
         },
         "SourceConnectionArn": {
-            "Default": "Public",
-            "Description": "Optional GitHub connection ARN to authenticate to private repos. Not required for public repos or default",
+            "Default": "None",
+            "Description": "GitHub connection ARN to authenticate to private repos for App Runner deployments",
             "Type": "String"
         },
         "VPCCIDRPrefix": {
@@ -247,17 +239,9 @@
                 "ServiceName": "CF-IoT-OTA",
                 "SourceConfiguration": {
                     "AuthenticationConfiguration": {
-                        "Fn::If": [
-                            "PublicGit",
-                            {
-                                "Ref": "AWS::NoValue"
-                            },
-                            {
-                                "ConnectionArn": {
-                                    "Ref": "SourceConnectionArn"
-                                }
-                            }
-                        ]
+                        "ConnectionArn": {
+                            "Ref": "SourceConnectionArn"
+                        }
                     },
                     "AutoDeploymentsEnabled": true,
                     "CodeRepository": {

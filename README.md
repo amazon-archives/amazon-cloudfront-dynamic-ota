@@ -1,19 +1,19 @@
 # Amazon CloudFront Dynamic Package Distribution for IoT Workloads
 
-## Background
-
-A common pattern for IoT devices is for updates to pushed over the air to the devices. However, in some cases, it may not be possible to control updates to a device, in the case of "anonymous" devices that are unregistered with a backend system. In some cases it may also be cost prohibitive to try to manage updates to large fleets of devices, where a fire-and-forget strategy might be better suited.
-
-For larger devices running a full operating system, updates are generally accomplished through a package manager (apt, yum, etc). However this power/performance prohibitive on smaller devices. Even for devices running a full operating system, it can be benficial to control the updates from the server side and remove any client side logic.
-
 ## Overview
 
-### Use Case
+### Challenge
 
-This solution provides a sample of using a CloudFront distribution (CDN) backed by Lambda or AppRunner and Dynamo to dynamically generate packages for devices and provide a simple solution for distributing them at scale.
+A common pattern for IoT devices is for updates to be pushed over the air. However, in some cases, it may not be possible to control updates to a device. This is especially true in the case of "anonymous" devices that are unregistered with a backend system, such as AWS IoT. It may also be cost prohibitive to try to manage updates to large fleets of devices, where a fire-and-forget strategy might be better suited.
+
+For larger devices running a full operating system, these challenges are typically solved by managing updates through a package manager such as apt, yum, npm, etc. However, on smaller devices that have battery/CPU/OS limitations, it may be difficult to impossible to use a package manager. Even for devices running a full operating system, an IoT platform might want to control updates from the server-side (based on certain device characteristics, for example) instead of letting devices pull their own packages.
+
+### Solution
+
+This solution provides an unauthenticated CloudFront endpoint for a device to call with metadata about its hardware/software characteristics. A backend compute layer running in either Lambda or AppRunner, backed by Dynamo, will use that metadata to dynamically generate packages for the device and cache the response with CloudFront. This simple update mechanism (simple HTTPS request) enables dynamic update payloads for a virtually unlimited number of devices of any type, in a cost-effective way.
 
 
-### Flow Summary
+### Detailed Flow Summary
 
 A client will call the CloudFront endpoint with a set of query parameters defining attributes related to the device (rather than package names, for example). The application layer will then use these query params to determine which binaries should be delivered to the device. Optionally, the client can include an MD5 hash of any currently installed binaries. These are inserted in the "If-None-Match" header and are called "ETags". Any binaries that would've been returned from the application that match the MD5 hash of one of these ETags will not be included in the return package. If the device already has all the binaries required (as indicated by all binaries matching one of the ETags), the application will return a 304 Not Modified.
 

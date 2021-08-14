@@ -26,9 +26,9 @@ The detailed request/response sequence can be seen below.
 
 Below is a sequence diagram and overview diagram for this demo.
 
-![Dynamic Package Distributor Overview Diagram](dynamic_package_distributor_overview.png)
+![Amazon CloudFront Dynamic OTA Overview Diagram](cloudfront_dynamic_ota_overview.png)
 
-![Dynamic Package Distributor Sequence Diagram](dynamic_package_distributor_sequence.png)
+![Amazon CloudFront Dynamic OTA Sequence Diagram](cloudfront_dynamic_ota_sequence.png)
 
 ### AWS Services Used
 - Amazon CloudFront
